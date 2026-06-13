@@ -65,7 +65,11 @@ def get_tts(precision=None):
     if quant is not None:
         kw["quantization_config"] = quant
         kw["device_map"] = "auto"
-    _model = AutoModelForCausalLM.from_pretrained(TTS_REPO, **kw)
+    try:  # flash-attention 2, если установлена (ускоритель из install.bat)
+        _model = AutoModelForCausalLM.from_pretrained(TTS_REPO, attn_implementation="flash_attention_2", **kw)
+    except Exception as e:
+        print(f"[higgs] flash_attention_2 недоступна ({e}); стандартный attention")
+        _model = AutoModelForCausalLM.from_pretrained(TTS_REPO, **kw)
     if quant is None and device == "cuda":
         _model = _model.to("cuda")
     _model.eval()

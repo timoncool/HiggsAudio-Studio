@@ -1,7 +1,8 @@
 """AI-режиссёр текста: нормализация+теги (роль A), сценарий подкаста (B), кастинг аудиокниги (C).
 
-Переключаемая малая LLM (Qwen3.5 / Gemma 3 / Mistral Nemo) + пост-фильтр по белому списку из 43 тегов.
-Тяжёлые импорты ленивые — фильтр тегов и тесты работают без torch/GPU.
+LLM — Qwen3.5 GGUF (4-бит Q4_K_M) через llama.cpp на GPU (n_gpu_layers=-1).
+CUDA-DLL кладутся install.bat рядом с llama.dll, поэтому импорт без трюков.
+Фильтр тегов и тесты работают без llama.cpp/GPU (ленивые импорты).
 """
 import os
 import re
@@ -37,12 +38,12 @@ def filter_tags(text):
     return _ANGLE.sub(repl, text)
 
 
-MODELS = {  # топ-3 по нашему ресёрчу: дефолт-качество, макс-качество (альт-вендор), лёгкая
-    "Qwen3.5-9B (дефолт)": "Qwen/Qwen3.5-9B",
-    "Gemma-3-12B": "unsloth/gemma-3-12b-it",
-    "Qwen3.5-4B": "Qwen/Qwen3.5-4B",
+MODELS = {  # GGUF (llama.cpp, GPU): качается 4-бит Q4_K_M, НЕ полный bf16
+    "Qwen3.5-9B · Q4_K_M (дефолт, ~5.5 ГБ)": ("unsloth/Qwen3.5-9B-GGUF", "Qwen3.5-9B-Q4_K_M.gguf"),
+    "Qwen3.5-4B · Q4_K_M (лёгкая, ~2.5 ГБ)": ("unsloth/Qwen3.5-4B-GGUF", "Qwen3.5-4B-Q4_K_M.gguf"),
 }
-DEFAULT_MODEL = "Qwen3.5-9B (дефолт)"
+DEFAULT_MODEL = "Qwen3.5-9B · Q4_K_M (дефолт, ~5.5 ГБ)"
+
 
 def _tag_spec():
     return (
@@ -61,74 +62,45 @@ def _tag_spec():
 _TAG_RULES = _tag_spec()
 
 _llm = None
-_ltok = None
 _cur = None
 
 
-def load_llm(label=DEFAULT_MODEL, precision="4bit"):
-    global _llm, _ltok, _cur
+def load_llm(label=DEFAULT_MODEL):
+    """Скачать GGUF (если нужно) и поднять llama.cpp на GPU (все слои)."""
+    global _llm, _cur
     if _MOCK:
         return "MOCK"
     if _cur == label and _llm is not None:
         return _llm
     unload_llm()
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-    repo = MODELS[label]
-    print(f"[director] загрузка {label} ({repo}, {precision})...")
-    quant = None
-    if precision in ("4bit", None) and torch.cuda.is_available():
-        quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_quant_type="nf4",
-                                   bnb_4bit_compute_dtype=torch.bfloat16)
-    elif precision == "8bit" and torch.cuda.is_available():
-        quant = BitsAndBytesConfig(load_in_8bit=True)
-    _ltok = AutoTokenizer.from_pretrained(repo)
-    kw = dict(trust_remote_code=True, dtype=torch.bfloat16)
-    if quant is not None:
-        kw["quantization_config"] = quant
-        kw["device_map"] = "auto"
-    _llm = AutoModelForCausalLM.from_pretrained(repo, **kw)
-    if quant is None and torch.cuda.is_available():
-        _llm = _llm.to("cuda")
-    _llm.eval()
+    from huggingface_hub import hf_hub_download
+    from llama_cpp import Llama
+    repo, fname = MODELS[label]
+    print(f"[director] загрузка {label} ({repo}/{fname})...")
+    path = hf_hub_download(repo, fname)
+    _llm = Llama(model_path=path, n_gpu_layers=-1, n_ctx=8192, verbose=False)
     _cur = label
     return _llm
 
 
 def unload_llm():
-    global _llm, _ltok, _cur
+    global _llm, _cur
     _llm = None
-    _ltok = None
     _cur = None
-    try:
-        import torch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    except Exception:
-        pass
+
+
+def _strip_think(txt):
+    return re.sub(r"<think>.*?</think>", "", txt or "", flags=re.S).strip()
 
 
 def _chat(system, user, max_new=1024, temp=0.4, label=DEFAULT_MODEL):
     if _MOCK:
         return user  # в mock — проброс без изменений
-    import torch
-    load_llm(label)
-    msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-    try:
-        enc = _ltok.apply_chat_template(msgs, add_generation_prompt=True, return_tensors="pt",
-                                        return_dict=True, enable_thinking=False)
-    except TypeError:
-        enc = _ltok.apply_chat_template(msgs, add_generation_prompt=True, return_tensors="pt",
-                                        return_dict=True)
-    enc = enc.to(next(_llm.parameters()).device)
-    in_len = enc["input_ids"].shape[1]
-    gen_kw = dict(max_new_tokens=max_new, do_sample=temp > 0)
-    if temp > 0:
-        gen_kw["temperature"] = temp
-        gen_kw["top_p"] = 0.9
-    with torch.no_grad():
-        out = _llm.generate(**enc, **gen_kw)
-    return _ltok.decode(out[0][in_len:], skip_special_tokens=True).strip()
+    llm = load_llm(label)
+    out = llm.create_chat_completion(
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+        max_tokens=max_new, temperature=temp, top_p=0.9)
+    return _strip_think(out["choices"][0]["message"].get("content", ""))
 
 
 def _filter_line(line):
