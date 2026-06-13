@@ -179,7 +179,8 @@ _RU = {
     "examples": "Примеры", "tags_help": "❓ Все теги (подсказка)", "tags_legend": _LEGEND_RU,
     "ph_clone": "Текст, который произнесёт клонированный голос…",
     "cloud_title": "☁️ Скачать голоса с сервера (русский пак)", "cloud_status": "Статус",
-    "load_list": "Загрузить список", "cloud_voices": "Доступные голоса", "download_sel": "⬇️ Скачать выбранные",
+    "load_list": "Обновить список", "cloud_voices": "Доступные голоса", "download_sel": "⬇️ Скачать выбранные",
+    "download_all": "⬇️ Скачать ВСЮ коллекцию голосов",
     "num_speakers": "Количество дикторов", "pod_hint": "Опиши тему — режиссёр напишет диалог. Затем задай голоса дикторам и нажми «Озвучить».",
     "pod_format": _PODFMT_RU, "topic": "Тема подкаста", "ph_topic": "Напр.: плюсы и минусы локального ИИ дома",
     "make_script": "📝 Сгенерировать сценарий", "script": "Сценарий (можно править)",
@@ -204,7 +205,8 @@ _EN = {
     "examples": "Examples", "tags_help": "❓ All tags (legend)", "tags_legend": _LEGEND_EN,
     "ph_clone": "Text the cloned voice will speak…",
     "cloud_title": "☁️ Download voices from server (Russian pack)", "cloud_status": "Status",
-    "load_list": "Load list", "cloud_voices": "Available voices", "download_sel": "⬇️ Download selected",
+    "load_list": "Refresh list", "cloud_voices": "Available voices", "download_sel": "⬇️ Download selected",
+    "download_all": "⬇️ Download the WHOLE voice collection",
     "num_speakers": "Number of speakers", "pod_hint": "Describe a topic — the director writes a dialogue. Then set speaker voices and synthesize.",
     "pod_format": _PODFMT_EN, "topic": "Podcast topic", "ph_topic": "e.g. pros and cons of local AI at home",
     "make_script": "📝 Generate script", "script": "Script (editable)",
@@ -491,6 +493,19 @@ def cb_download_voices(selected):
     return f"Скачано / Downloaded: {ok}/{len(selected)}", gr.update(choices=[OWN_FILE] + scan_voices())
 
 
+def cb_download_all_cloud(progress=gr.Progress()):
+    """Скачать ВСЮ коллекцию голосов (Slait/russia_voices) одним снапшотом в voices/."""
+    progress(0.1, desc="Скачиваю коллекцию голосов...")
+    try:
+        from huggingface_hub import snapshot_download
+        snapshot_download(CLOUD_VOICES_REPO, repo_type="dataset", local_dir=str(VOICES_DIR),
+                          allow_patterns=["*.mp3", "*.wav", "*.flac", "*.txt", "*.lab"])
+    except Exception as e:
+        return f"Ошибка / Error: {e}", gr.update()
+    n = len(scan_voices())
+    return f"Скачана вся коллекция / Downloaded full collection: {n} голосов", gr.update(choices=[OWN_FILE] + scan_voices())
+
+
 # ----------------------------------------------------------------------------
 # Колбэки
 # ----------------------------------------------------------------------------
@@ -656,11 +671,13 @@ def build():
                         c_auto = gr.Checkbox(label=T("auto_enrich"), value=False)
                         c_btn = gr.Button(T("generate"), variant="primary", size="lg")
                     c_out = gr.Audio(label=T("result"), type="numpy", autoplay=True)
-                with gr.Accordion(T("cloud_title"), open=False):
+                with gr.Accordion(T("cloud_title"), open=True):
+                    cl_all = gr.Button(T("download_all"), variant="primary", size="lg")
                     cl_status = gr.Textbox(label=T("cloud_status"), interactive=False)
-                    cl_load = gr.Button(T("load_list"), size="sm")
+                    with gr.Row():
+                        cl_load = gr.Button(T("load_list"), size="sm")
+                        cl_dl = gr.Button(T("download_sel"), size="sm")
                     cl_voices = gr.CheckboxGroup(choices=[], label=T("cloud_voices"))
-                    cl_dl = gr.Button(T("download_sel"), variant="primary", size="sm")
                 c_preset.change(cb_preset, [c_preset], [c_ref, c_ref_text])
                 c_tr_btn.click(transcribe, [c_ref], [c_ref_text])
                 c_refresh.click(lambda: gr.update(choices=[OWN_FILE] + scan_voices()), None, [c_preset])
