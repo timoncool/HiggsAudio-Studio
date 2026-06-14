@@ -17,8 +17,10 @@ if errorlevel 1 (
 )
 
 if exist ".git" (
-    echo Обновление портативки...
+    echo Обновление кода...
     git pull
+    echo Обновление зависимостей...
+    if exist "python\python.exe" python\python.exe -m pip install -r requirements.txt --no-warn-script-location
 ) else (
     echo Папка .git не найдена - скачивайте обновления вручную с GitHub.
 )
