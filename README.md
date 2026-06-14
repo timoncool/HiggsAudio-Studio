@@ -1,15 +1,33 @@
-# Higgs Audio Studio
+<div align="center">
 
-[![Stars](https://img.shields.io/github/stars/timoncool/HiggsAudio-Studio?style=social)](https://github.com/timoncool/HiggsAudio-Studio/stargazers)
-[![License](https://img.shields.io/badge/license-Research%20%26%20Non--Commercial-orange)](#лицензия)
+# 🎙️ Higgs Audio Studio
+
+**Портативная локальная озвучка на базе [Higgs Audio v3 TTS](https://huggingface.co/bosonai/higgs-audio-v3-tts-4b) — экспрессивная речь на 100+ языках (русский в топ-тире), zero-shot клонирование голоса, AI-режиссёр текста, режимы Подкаст и Аудиокнига. 100% оффлайн.**
+
+[![Stars](https://img.shields.io/github/stars/timoncool/HiggsAudio-Studio?style=flat-square&logo=github)](https://github.com/timoncool/HiggsAudio-Studio/stargazers)
+[![License](https://img.shields.io/badge/license-Research_%26_Non--Commercial-orange?style=flat-square)](#лицензия)
+[![Last Commit](https://img.shields.io/github/last-commit/timoncool/HiggsAudio-Studio?style=flat-square)](https://github.com/timoncool/HiggsAudio-Studio/commits/main)
+[![Issues](https://img.shields.io/github/issues/timoncool/HiggsAudio-Studio?style=flat-square)](https://github.com/timoncool/HiggsAudio-Studio/issues)
+[![Code size](https://img.shields.io/github/languages/code-size/timoncool/HiggsAudio-Studio?style=flat-square)](https://github.com/timoncool/HiggsAudio-Studio)
+
+[![Windows](https://img.shields.io/badge/Windows-10/11-0078D6?style=flat-square&logo=windows&logoColor=white)](#системные-требования)
+[![Linux](https://img.shields.io/badge/Linux-x64_%2F_aarch64-FCC624?style=flat-square&logo=linux&logoColor=black)](#системные-требования)
+[![macOS](https://img.shields.io/badge/macOS-Apple_Silicon-000000?style=flat-square&logo=apple&logoColor=white)](#системные-требования)
+[![NVIDIA](https://img.shields.io/badge/NVIDIA-CUDA_12.8-76B900?style=flat-square&logo=nvidia&logoColor=white)](#системные-требования)
+[![AMD](https://img.shields.io/badge/AMD-DirectML_%2F_ROCm-ED1C24?style=flat-square&logo=amd&logoColor=white)](#системные-требования)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)](#)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.7.1-EE4C2C?style=flat-square&logo=pytorch&logoColor=white)](#)
+[![Gradio](https://img.shields.io/badge/Gradio-6.x-F97316?style=flat-square&logo=gradio&logoColor=white)](#)
+
+<img src="docs/screenshot-ru.png" alt="Higgs Audio Studio — русский интерфейс" width="49%"/> <img src="docs/screenshot-en.png" alt="Higgs Audio Studio — English UI" width="49%"/>
+
+</div>
 
 > 🚀 **Установка в один клик через [Pinokio](https://pinokio.co) (кроссплатформенно):**
-> [![Install on Pinokio](https://img.shields.io/badge/Install_on-Pinokio-7c3aed?style=flat-square)](https://pinokio.co/item?uri=https://github.com/timoncool/HiggsAudio-Studio-pinokio)
-> [![Open in Pinokio](https://img.shields.io/badge/Open_in-Pinokio-6d28d9?style=flat-square)](https://beta.pinokio.co/apps/github-com-timoncool-higgsaudio-studio-pinokio)
+> [![Install on Pinokio](https://img.shields.io/badge/🚀_Install_on-Pinokio-7c3aed?style=for-the-badge)](https://pinokio.co/item?uri=https://github.com/timoncool/HiggsAudio-Studio-pinokio)
+> [![Open in Pinokio](https://img.shields.io/badge/📂_Open_in-Pinokio-6d28d9?style=for-the-badge)](https://beta.pinokio.co/apps/github-com-timoncool-higgsaudio-studio-pinokio)
 >
-> Windows / Linux (x64 & aarch64) / macOS · NVIDIA / AMD / CPU, без `install.bat`. Лаунчер: **[timoncool/HiggsAudio-Studio-pinokio](https://github.com/timoncool/HiggsAudio-Studio-pinokio)**
-
-**Портативная локальная озвучка на базе [Higgs Audio v3 TTS](https://huggingface.co/bosonai/higgs-audio-v3-tts-4b)** — экспрессивная речь на 100+ языках (русский в топ-тире), zero-shot клонирование голоса, AI-режиссёр текста и режимы **Подкаст** и **Аудиокнига**. Один клик — установка, 100% оффлайн, NVIDIA GPU.
+> Работает на **Windows / Linux (x64 & aarch64) / macOS** · NVIDIA / AMD / Apple Silicon / CPU. Без `install.bat` — Pinokio сам ставит CUDA, Python 3.12, PyTorch и зависимости. Лаунчер: **[timoncool/HiggsAudio-Studio-pinokio](https://github.com/timoncool/HiggsAudio-Studio-pinokio)**
 
 Всё живёт внутри папки: Python, зависимости, модели, кэш. Ничего не ставится в систему. Удалил папку — удалил приложение.
 
@@ -27,7 +45,23 @@
 
 ## Системные требования
 
-NVIDIA GPU. TTS грузится по VRAM (квант на лету), LLM-режиссёр — отдельно (последовательная загрузка):
+### Платформы (через Pinokio-лаунчер)
+
+| ОС | GPU | Статус | Ускорение |
+|---|---|---|---|
+| Windows 10/11 | NVIDIA RTX 30xx–50xx | ✅ протестировано | CUDA 12.8 + Triton (torch.compile ~2×) |
+| Windows 10/11 | NVIDIA RTX 20xx | ✅ ожидается | CUDA 12.8 + Triton |
+| Linux x64 | NVIDIA RTX 20xx–50xx | ✅ ожидается | CUDA 12.8 + Triton |
+| Linux aarch64 | NVIDIA DGX Spark / Jetson | ✅ ожидается | CUDA 13.0 |
+| Windows | AMD RDNA3+ | ✅ ожидается | DirectML |
+| Linux | AMD RDNA3+ | ✅ ожидается | ROCm 6.3 |
+| macOS | Apple Silicon M1–M4 | ✅ ожидается | MPS |
+| macOS | Intel | ⚠️ только CPU | torch CPU |
+| Любая | Только CPU | ⚠️ очень медленно | CPU |
+
+> Higgs не использует Flash-Attention 2 (берёт SDPA с flash-ядрами). Локальная `install.bat`-сборка — NVIDIA Windows; полная кроссплатформенность — через [Pinokio](https://github.com/timoncool/HiggsAudio-Studio-pinokio).
+
+### Память (NVIDIA; TTS квантуется на лету, LLM-режиссёр грузится отдельно)
 
 | VRAM | Режим TTS | LLM-режиссёр |
 |------|-----------|--------------|
