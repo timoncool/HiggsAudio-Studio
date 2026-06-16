@@ -1,4 +1,6 @@
 # Higgs Audio Studio — Python deps (torch/torchaudio installed separately in install.bat with CUDA)
+torchaudio
+llama-cpp-python
 transformers>=5.5
 accelerate
 bitsandbytes
