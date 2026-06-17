@@ -7,6 +7,10 @@ CUDA-DLL кладутся install.bat рядом с llama.dll, поэтому и
 import os
 import re
 
+# llama.cpp по умолчанию пиннит host-память (cudaHostRegister); в одном процессе с pinned-
+# аллокатором torch это даёт CUDA einval. Глушим ДО импорта llama_cpp (важно — до Llama()).
+os.environ.setdefault("GGML_CUDA_NO_PINNED", "1")
+
 _MOCK = bool(os.environ.get("HIGGS_UI_MOCK"))
 
 WHITELIST = {

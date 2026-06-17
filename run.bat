@@ -48,6 +48,7 @@ if exist "%SCRIPT_DIR%ffmpeg\ffmpeg.exe" (
 
 set PYTHONIOENCODING=utf-8
 set PYTHONUNBUFFERED=1
+set GGML_CUDA_NO_PINNED=1
 
 echo Запуск приложения...
 python\python.exe app.py
