@@ -10,3 +10,4 @@ huggingface_hub
 hf-xet
 sentencepiece
 protobuf
+requests
