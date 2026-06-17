@@ -394,9 +394,23 @@ def set_out_format(f):
     _OUT_FORMAT = f if f in _FMT else "wav"
 
 
+def _has_audio(wav):
+    try:
+        return wav is not None and len(wav) > 0
+    except TypeError:
+        return False
+
+
+def _safe_audio_output(sr, wav, ctx="tts"):
+    if not _has_audio(wav):
+        print(f"[{ctx}] empty audio result; returning None to Gradio to avoid crash", flush=True)
+        return None
+    return sr, wav
+
+
 def _save(sr, wav, prefix="tts"):
     import soundfile as sf
-    if wav is None or len(wav) == 0:
+    if not _has_audio(wav):
         return None
     fmt = _OUT_FORMAT
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
@@ -599,8 +613,11 @@ def cb_tts(text, model, auto, temperature, top_p, top_k, max_new, seed):
     text = _maybe_enrich(text, model, auto)
     sr, wav = _speak(text, temperature=temperature, top_p=top_p, top_k=top_k,
                      max_new_tokens=max_new, seed=seed)
+    audio = _safe_audio_output(sr, wav, ctx="tts")
+    if audio is None:
+        return None, text
     _save(sr, wav, "tts")
-    return (sr, wav), text
+    return audio, text
 
 
 def cb_enrich(text, model):
@@ -611,8 +628,11 @@ def cb_expr(text, model, auto):
     eng.clear_cancel()
     text = _maybe_enrich(text, model, auto)
     sr, wav = _speak(text)
+    audio = _safe_audio_output(sr, wav, ctx="expr")
+    if audio is None:
+        return None, text
     _save(sr, wav, "expr")
-    return (sr, wav), text
+    return audio, text
 
 
 def cb_clone(text, model, auto, ref_audio, ref_text, preset, temperature, top_p, seed):
@@ -620,8 +640,11 @@ def cb_clone(text, model, auto, ref_audio, ref_text, preset, temperature, top_p,
     text = _maybe_enrich(text, model, auto)
     ref = ref_audio or (voice_path(preset) if preset and preset != OWN_FILE else None)
     sr, wav = _speak(text, ref_audio=ref, ref_text=ref_text, temperature=temperature, top_p=top_p, seed=seed)
+    audio = _safe_audio_output(sr, wav, ctx="clone")
+    if audio is None:
+        return None, text
     _save(sr, wav, "clone")
-    return (sr, wav), text
+    return audio, text
 
 
 def cb_podcast_script(topic, num, model):
