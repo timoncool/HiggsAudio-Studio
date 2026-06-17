@@ -139,12 +139,26 @@ def unload_tts():
     global _model, _tok
     _model = None
     _tok = None
+    import gc; gc.collect()
     try:
         import torch
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
+            torch.cuda.synchronize()  # ждём завершения всех операций
     except Exception:
         pass
+
+
+import contextlib
+
+@contextlib.contextmanager
+def tts_offloaded():
+    """Временно выгружает TTS. Автоматически восстанавливает при выходе."""
+    unload_tts()
+    try:
+        yield
+    finally:
+        pass  # TTS перезагрузится лениво при get_tts()
 
 
 def _load_ref(path):

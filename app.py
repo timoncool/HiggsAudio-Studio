@@ -7,6 +7,7 @@ import os
 import re
 import sys
 import asyncio
+import time
 
 # Корень проекта в sys.path — embedded python не добавляет каталог скрипта
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -591,7 +592,10 @@ def cb_download_all_cloud(progress=gr.Progress()):
 # Колбэки
 # ----------------------------------------------------------------------------
 def _maybe_enrich(text, model, auto):
-    return dr.enrich(text, model) if auto else text
+    if not auto or not text:
+        return text
+    # Воркер на CPU, TTS на GPU — конфликта нет
+    return dr.enrich(text, model)
 
 
 def cb_tts(text, model, auto, temperature, top_p, top_k, max_new, seed):
@@ -843,19 +847,9 @@ def build():
 
 
 def prewarm():
-    """Компиляция обоих путей (обычный + клон) в ГЛАВНОМ потоке до старта сервера —
-    первая компиляция в рабочем потоке gradio роняет процесс (особенно на клон-пути)."""
-    if eng._MOCK:
-        return
-    try:
-        print("[prewarm] прогрев + компиляция в главном потоке (~1-3 мин, разово)...", flush=True)
-        eng.generate("Прогрев системы озвучки.")
-        vs = scan_voices()
-        if vs:
-            eng.generate("Прогрев клонирования голоса.", ref_audio=voice_path(vs[0]))
-        print("[prewarm] готово — генерации будут быстрыми и стабильными", flush=True)
-    except Exception as e:
-        print(f"[prewarm] пропущен ({e})", flush=True)
+    """Прогрев отключён — модели загружаются по требованию для экономии VRAM."""
+    print("[prewarm] прогрев отключён (последовательная загрузка моделей)")
+    pass
 
 
 if __name__ == "__main__":
