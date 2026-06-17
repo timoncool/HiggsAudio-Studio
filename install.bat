@@ -133,6 +133,9 @@ REM  Шаг 5: Зависимости
 REM ============================================================
 echo [4/7] Устанавливаю зависимости...
 python\python.exe -m pip install -r requirements.txt --no-warn-script-location
+REM Облачные голоса качаются через huggingface_hub (httpx). Выкидываем urllib3-future/niquests,
+REM если приехали транзитивно — их битый HTTP/2 (hface) ломал скачивание голосов (ишью #2).
+python\python.exe -m pip uninstall -y urllib3-future niquests 2>nul
 
 REM ============================================================
 REM  Шаг 6: Triton для torch.compile (~2x). Скобки/for-блоки убраны (goto-поток).

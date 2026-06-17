@@ -72,7 +72,6 @@ MAX_SPK = 4
 OWN_FILE = "— свой файл / own file —"
 
 CLOUD_VOICES_REPO = "Slait/russia_voices"
-CLOUD_VOICES_BASE = "https://huggingface.co/datasets/Slait/russia_voices/resolve/main"
 
 
 # ----------------------------------------------------------------------------
@@ -560,17 +559,15 @@ def cb_load_cloud():
 
 
 def _dl_voice(name):
-    import requests
+    """Скачать один облачный голос через huggingface_hub (httpx-бэкенд, без сырого
+    requests/urllib3 — обходит баг urllib3-future hface http2). .txt не обязателен."""
+    from huggingface_hub import hf_hub_download
     try:
-        r = requests.get(f"{CLOUD_VOICES_BASE}/{name}.mp3?download=true", timeout=90)
-        r.raise_for_status()
-        (VOICES_DIR / f"{name}.mp3").write_bytes(r.content)
+        hf_hub_download(CLOUD_VOICES_REPO, f"{name}.mp3", repo_type="dataset", local_dir=str(VOICES_DIR))
         try:
-            rt = requests.get(f"{CLOUD_VOICES_BASE}/{name}.txt?download=true", timeout=30)
-            if rt.status_code == 200:
-                (VOICES_DIR / f"{name}.txt").write_text(rt.text, encoding="utf-8")
+            hf_hub_download(CLOUD_VOICES_REPO, f"{name}.txt", repo_type="dataset", local_dir=str(VOICES_DIR))
         except Exception:
-            pass
+            pass  # транскрипт не обязателен (или его нет в датасете)
         return True
     except Exception as e:
         print(f"[voices] dl {name}: {e}")
