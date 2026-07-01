@@ -4,6 +4,10 @@ setlocal enabledelayedexpansion
 
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
+set "PY=.venv\Scripts\python.exe"
+REM Ставим пакеты через uv (быстро), если uv.exe рядом; иначе откатываемся на pip.
+set "PIPINSTALL=%PY% -m pip install"
+if exist "uv.exe" set "PIPINSTALL=uv.exe pip install --python %PY%"
 
 echo ========================================
 echo   Higgs Audio Studio - Обновление
@@ -20,16 +24,16 @@ if exist ".git" (
     echo Обновление кода...
     git pull
     echo Обновление зависимостей...
-    if exist "python\python.exe" python\python.exe -m pip install -r requirements.txt --no-warn-script-location
+    if exist "%PY%" %PIPINSTALL% -r requirements.txt
 ) else (
     echo Папка .git не найдена - скачивайте обновления вручную с GitHub.
 )
 
 REM Чиним CUDA-рантайм режиссёра на старых установках: llama (cu124) должна иметь СВОИ 12.4
 REM cudart/cublas, а не 12.8 от torch (иначе "CUDA error: invalid argument" при включённом режиссёре).
-if not exist "python\python.exe" goto :rt_done
-python\python.exe -m pip install nvidia-cuda-runtime-cu12==12.4.127 nvidia-cublas-cu12==12.4.5.8 --no-warn-script-location
-for %%P in (cuda_runtime cublas) do for %%D in (cudart64_12.dll cublas64_12.dll cublasLt64_12.dll) do if exist "python\Lib\site-packages\nvidia\%%P\bin\%%D" copy /y "python\Lib\site-packages\nvidia\%%P\bin\%%D" "python\Lib\site-packages\llama_cpp\lib\%%D" >nul
+if not exist "%PY%" goto :rt_done
+%PIPINSTALL% nvidia-cuda-runtime-cu12==12.4.127 nvidia-cublas-cu12==12.4.5.8
+for %%P in (cuda_runtime cublas) do for %%D in (cudart64_12.dll cublas64_12.dll cublasLt64_12.dll) do if exist ".venv\Lib\site-packages\nvidia\%%P\bin\%%D" copy /y ".venv\Lib\site-packages\nvidia\%%P\bin\%%D" ".venv\Lib\site-packages\llama_cpp\lib\%%D" >nul
 :rt_done
 
 echo Обновление завершено!

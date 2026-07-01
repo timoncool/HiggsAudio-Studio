@@ -1,6 +1,8 @@
 # Higgs Audio Studio — Python deps (torch/torchaudio installed separately in install.bat with CUDA)
+# llama-cpp-python ставится из prebuilt-колеса abetlen (cu124) + свой CUDA-рантайм.
+# Из PyPI оно тянет sdist и падает на сборке (нет scikit_build_core в embed-питоне).
+
 torchaudio
-llama-cpp-python
 transformers>=5.5
 accelerate
 bitsandbytes
