@@ -1,0 +1,25 @@
+name: Star History
+
+on:
+  schedule:
+    - cron: "17 3 * * 1"   # еженедельно, пн 03:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render star chart
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/scripts/star_chart.py
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/stars-*.svg
+          git diff --cached --quiet || (git commit -m "chore: update star history chart" && git push)
