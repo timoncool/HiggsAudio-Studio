@@ -170,8 +170,14 @@ _RU = {
     "text": "Текст", "ph_text": "Введите текст… можно вставлять теги: <|emotion:elation|>Привет!",
     "generate": "🔊 Озвучить", "stop": "⏹ Стоп", "result": "Результат", "advanced": "Доп. настройки",
     "director_model": "Модель режиссёра (для обогащения / диалогов)",
+    "director_lang": "Язык вывода режиссёра",
+    "director_lang_info": "На каком языке режиссёр пишет обогащённый текст и диалоги. «Авто» — как в исходном тексте.",
+    "lang_auto": "Авто (язык текста)",
     "quant": "Квантизация Higgs ⚗️ (экспериментально)",
     "quant_info": "⚗️ Экспериментально: квантизация (4/8-bit) экономит VRAM, но качество звука заметно страдает. Для лучшего качества оставьте bf16.",
+    "quant_bf16": "bf16 — макс. качество (дефолт)",
+    "quant_4bit": "4-bit (nf4) ⚗️ эксперим. — качество ниже",
+    "quant_8bit": "8-bit ⚗️ эксперим. — качество ниже",
     "out_format": "Формат вывода",
     "cat_emotion": "😊 Эмоции (на предложение)", "cat_prosody": "🎵 Просодия", "cat_style": "🎭 Стиль", "cat_sfx": "🔊 Звуки (по месту в тексте)",
     "download_all": "⬇️ Скачать все 700+",
@@ -201,8 +207,14 @@ _EN = {
     "text": "Text", "ph_text": "Type text… you can insert tags: <|emotion:elation|>Hi!",
     "generate": "🔊 Generate", "stop": "⏹ Stop", "result": "Result", "advanced": "Advanced",
     "director_model": "Director model (enrich / dialogues)",
+    "director_lang": "Director output language",
+    "director_lang_info": "Language the director writes enriched text and dialogue in. \"Auto\" matches the input text.",
+    "lang_auto": "Auto (text language)",
     "quant": "Higgs quantization ⚗️ (experimental)",
     "quant_info": "⚗️ Experimental: quantization (4/8-bit) saves VRAM but audibly degrades quality. Keep bf16 for best quality.",
+    "quant_bf16": "bf16 — max quality (default)",
+    "quant_4bit": "4-bit (nf4) ⚗️ experimental — lower quality",
+    "quant_8bit": "8-bit ⚗️ experimental — lower quality",
     "out_format": "Output format",
     "cat_emotion": "😊 Emotion (per sentence)", "cat_prosody": "🎵 Prosody", "cat_style": "🎭 Style", "cat_sfx": "🔊 Sounds (inline)",
     "download_all": "⬇️ Download all 700+",
@@ -226,11 +238,10 @@ _EN = {
     "batch_text": "List of texts (one per line)", "ph_batch": "First line.\nSecond line.\nThird line.",
     "log": "Log", "brand_header_html": BRAND_HTML_EN,
 }
-I18N = gr.I18n(en=_EN, ru=_RU)
 
 
 def T(key):
-    return I18N(key)
+    return I18N(key)  # I18N is built after the tag-button/legend keys are injected (see below)
 
 
 HEAD_SCRIPT = """
@@ -327,30 +338,77 @@ CSS = """
 import json as _json
 # Официальные описания тегов (bosonai/higgs-audio-v3-tts-4b) — для тултипов и легенды.
 TAG_DESC = {
-    "affection": "Теплота, нежность", "amusement": "Веселье, игривый смешок", "anger": "Гнев",
-    "arousal": "Обострённое желание", "awe": "Благоговение, восхищение", "bitterness": "Горечь",
-    "confusion": "Растерянность", "contemplation": "Задумчивость, рефлексия", "contentment": "Спокойное удовлетворение",
-    "determination": "Решимость, твёрдость", "disgust": "Отвращение", "elation": "Ликование, радость",
-    "enthusiasm": "Энтузиазм, воодушевление", "fear": "Страх", "helplessness": "Беспомощность",
-    "longing": "Тоска, томление", "pride": "Гордость, уверенность", "relief": "Облегчение",
-    "sadness": "Грусть", "shame": "Стыд", "surprise": "Удивление",
-    "speed_very_slow": "Очень медленно (≈0.65×)", "speed_slow": "Медленно (≈0.85×)",
-    "speed_fast": "Быстро (≈1.2×)", "speed_very_fast": "Очень быстро (≈1.4×)",
-    "pitch_low": "Ниже тон (≈−3 полутона)", "pitch_high": "Выше тон (≈+2.5 полутона)",
-    "expressive_high": "Выразительнее", "expressive_low": "Ровнее, монотоннее",
-    "pause": "Пауза ≈400–700 мс (по месту)", "long_pause": "Длинная пауза ≈700–1500 мс (по месту)",
-    "singing": "Пение", "shouting": "Крик, посыл голоса", "whispering": "Шёпот",
-    "cough": "Кашель (звук: кхм)", "laughter": "Смех (ха-ха)", "crying": "Плач (ыыы)",
-    "screaming": "Крик (ааа)", "burping": "Отрыжка", "humming": "Мычание (ммм)",
-    "sigh": "Вздох (эх)", "sniff": "Шмыганье носом", "sneeze": "Чихание (апчхи)",
+    "ru": {
+        "affection": "Теплота, нежность", "amusement": "Веселье, игривый смешок", "anger": "Гнев",
+        "arousal": "Обострённое желание", "awe": "Благоговение, восхищение", "bitterness": "Горечь",
+        "confusion": "Растерянность", "contemplation": "Задумчивость, рефлексия", "contentment": "Спокойное удовлетворение",
+        "determination": "Решимость, твёрдость", "disgust": "Отвращение", "elation": "Ликование, радость",
+        "enthusiasm": "Энтузиазм, воодушевление", "fear": "Страх", "helplessness": "Беспомощность",
+        "longing": "Тоска, томление", "pride": "Гордость, уверенность", "relief": "Облегчение",
+        "sadness": "Грусть", "shame": "Стыд", "surprise": "Удивление",
+        "speed_very_slow": "Очень медленно (≈0.65×)", "speed_slow": "Медленно (≈0.85×)",
+        "speed_fast": "Быстро (≈1.2×)", "speed_very_fast": "Очень быстро (≈1.4×)",
+        "pitch_low": "Ниже тон (≈−3 полутона)", "pitch_high": "Выше тон (≈+2.5 полутона)",
+        "expressive_high": "Выразительнее", "expressive_low": "Ровнее, монотоннее",
+        "pause": "Пауза ≈400–700 мс (по месту)", "long_pause": "Длинная пауза ≈700–1500 мс (по месту)",
+        "singing": "Пение", "shouting": "Крик, посыл голоса", "whispering": "Шёпот",
+        "cough": "Кашель (звук: кхм)", "laughter": "Смех (ха-ха)", "crying": "Плач (ыыы)",
+        "screaming": "Крик (ааа)", "burping": "Отрыжка", "humming": "Мычание (ммм)",
+        "sigh": "Вздох (эх)", "sniff": "Шмыганье носом", "sneeze": "Чихание (апчхи)",
+    },
+    "en": {
+        "affection": "Warmth, tenderness", "amusement": "Amusement, a playful chuckle", "anger": "Anger",
+        "arousal": "Heightened desire", "awe": "Awe, admiration", "bitterness": "Bitterness",
+        "confusion": "Confusion", "contemplation": "Contemplation, reflection", "contentment": "Calm contentment",
+        "determination": "Determination, firmness", "disgust": "Disgust", "elation": "Elation, joy",
+        "enthusiasm": "Enthusiasm", "fear": "Fear", "helplessness": "Helplessness",
+        "longing": "Longing, yearning", "pride": "Pride, confidence", "relief": "Relief",
+        "sadness": "Sadness", "shame": "Shame", "surprise": "Surprise",
+        "speed_very_slow": "Very slow (≈0.65×)", "speed_slow": "Slow (≈0.85×)",
+        "speed_fast": "Fast (≈1.2×)", "speed_very_fast": "Very fast (≈1.4×)",
+        "pitch_low": "Lower pitch (≈−3 semitones)", "pitch_high": "Higher pitch (≈+2.5 semitones)",
+        "expressive_high": "More expressive", "expressive_low": "Flatter, more monotone",
+        "pause": "Pause ≈400–700 ms (in place)", "long_pause": "Long pause ≈700–1500 ms (in place)",
+        "singing": "Singing", "shouting": "Shouting, projected voice", "whispering": "Whisper",
+        "cough": "Cough (sound: ahem)", "laughter": "Laughter (ha-ha)", "crying": "Crying",
+        "screaming": "Scream (aaah)", "burping": "Burp", "humming": "Humming (mmm)",
+        "sigh": "Sigh", "sniff": "Sniff", "sneeze": "Sneeze (achoo)",
+    },
 }
-TAG_RU = {k: v.split(",")[0].split(" (")[0].strip() for k, v in TAG_DESC.items()}
-_CAT_NAMES = {"emotion": "😊 Эмоции (в начало предложения)", "prosody": "🎵 Просодия",
-              "style": "🎭 Стиль (в начало)", "sfx": "🔊 Звуки (по месту, рядом со звукоподражанием)"}
-TAGS_LEGEND_MD = "\n\n".join(
-    f"**{_CAT_NAMES[c]}**\n" + "\n".join(f"- `<|{c}:{v}|>` — {TAG_DESC.get(v, '')}" for v in sorted(dr.WHITELIST[c]))
-    for c in ("emotion", "prosody", "style", "sfx")
-)
+
+
+def _tag_short(lang, val):
+    """Short tag-button label: the first clause of the description."""
+    d = TAG_DESC[lang].get(val, val)
+    return d.split(",")[0].split(" (")[0].strip()
+
+
+_CAT_NAMES = {
+    "ru": {"emotion": "😊 Эмоции (в начало предложения)", "prosody": "🎵 Просодия",
+           "style": "🎭 Стиль (в начало)", "sfx": "🔊 Звуки (по месту, рядом со звукоподражанием)"},
+    "en": {"emotion": "😊 Emotions (at sentence start)", "prosody": "🎵 Prosody",
+           "style": "🎭 Style (at start)", "sfx": "🔊 Sounds (inline, next to the onomatopoeia)"},
+}
+
+
+def _build_legend(lang):
+    return "\n\n".join(
+        f"**{_CAT_NAMES[lang][c]}**\n" + "\n".join(
+            f"- `<|{c}:{v}|>` — {TAG_DESC[lang].get(v, '')}" for v in sorted(dr.WHITELIST[c]))
+        for c in ("emotion", "prosody", "style", "sfx")
+    )
+
+
+# Register the tag UI (per-tag button labels + full legend) into i18n so the RU/EN
+# switch covers them too. Done before gr.I18n is built so both languages are captured.
+for _c in ("emotion", "prosody", "style", "sfx"):
+    for _v in sorted(dr.WHITELIST[_c]):
+        _RU[f"tagbtn_{_v}"] = f"{_tag_short('ru', _v)}\n{_v}"
+        _EN[f"tagbtn_{_v}"] = f"{_tag_short('en', _v)}\n{_v}"
+_RU["tags_legend"] = _build_legend("ru")
+_EN["tags_legend"] = _build_legend("en")
+
+I18N = gr.I18n(en=_EN, ru=_RU)
 DARK_JS = ("""
 () => {
   try { const u=new URL(window.location);
@@ -361,23 +419,23 @@ DARK_JS = ("""
   const apply = () => document.querySelectorAll('.tagbtn button').forEach(b => { const k=(b.textContent||'').trim().split(/[\\s\\n]+/).find(x => TD[x]); if(k) b.title = TD[k]; });
   apply(); setInterval(apply, 1200);
 }
-""").replace("__TAGDESC__", _json.dumps(TAG_DESC, ensure_ascii=False))
+""").replace("__TAGDESC__", _json.dumps(TAG_DESC["en"], ensure_ascii=False))
 
 TTS_EXAMPLES = [
+    ["Hello! This is Higgs Audio Studio — local narration in over a hundred languages."],
+    ["<|emotion:elation|>Incredible, we did it! <|sfx:laughter|>ha-ha-ha!"],
+    ["<|style:whispering|>Come closer, I'll tell you a secret."],
     ["Привет! Это Higgs Audio Studio — локальная озвучка на ста языках."],
-    ["<|emotion:elation|>Невероятно, у нас получилось! <|sfx:laughter|>ха-ха-ха!"],
-    ["<|style:whispering|>Подойди ближе, я расскажу секрет."],
-    ["Hello! This model speaks over a hundred languages, fully offline."],
 ]
 EXPR_EXAMPLES = [
-    ["<|emotion:sadness|>Мне очень жаль, что так вышло. <|prosody:long_pause|> Но мы справимся."],
-    ["<|emotion:anger|>Сколько можно это терпеть?! <|sfx:sigh|>эх…"],
-    ["<|style:shouting|>Поднажми! Финиш уже совсем близко!"],
+    ["<|emotion:sadness|>I'm so sorry it turned out this way. <|prosody:long_pause|> But we'll get through it."],
+    ["<|emotion:anger|>How much longer can this go on?! <|sfx:sigh|>ugh…"],
+    ["<|style:shouting|>Push! The finish line is right there!"],
 ]
-POD_TOPICS = [["Плюсы и минусы локального ИИ дома"], ["Как нейросети меняют музыку"],
-              ["Будущее голосовых ассистентов"]]
-BOOK_EXAMPLES = [["Старый маяк молчал уже много лет. — Здесь кто-нибудь есть? — крикнул Том, "
-                  "поднимаясь по скрипучей лестнице. Ответом была лишь тишина."]]
+POD_TOPICS = [["Pros and cons of local AI at home"], ["How neural networks are changing music"],
+              ["The future of voice assistants"]]
+BOOK_EXAMPLES = [["The old lighthouse had been silent for years. \"Is anyone there?\" Tom called out, "
+                  "climbing the creaky stairs. Only silence answered."]]
 
 
 # ----------------------------------------------------------------------------
@@ -601,13 +659,13 @@ def cb_download_all_cloud(progress=gr.Progress()):
 # ----------------------------------------------------------------------------
 # Колбэки
 # ----------------------------------------------------------------------------
-def _maybe_enrich(text, model, auto):
-    return dr.enrich(text, model) if auto else text
+def _maybe_enrich(text, model, auto, lang="auto"):
+    return dr.enrich(text, model, lang=lang) if auto else text
 
 
-def cb_tts(text, model, auto, temperature, top_p, top_k, max_new, seed):
+def cb_tts(text, model, auto, temperature, top_p, top_k, max_new, seed, lang="auto"):
     eng.clear_cancel()
-    text = _maybe_enrich(text, model, auto)
+    text = _maybe_enrich(text, model, auto, lang)
     sr, wav = _speak(text, temperature=temperature, top_p=top_p, top_k=top_k,
                      max_new_tokens=max_new, seed=seed)
     audio = _safe_audio_output(sr, wav, ctx="tts")
@@ -617,13 +675,13 @@ def cb_tts(text, model, auto, temperature, top_p, top_k, max_new, seed):
     return audio, text
 
 
-def cb_enrich(text, model):
-    return dr.enrich(text, label=model)
+def cb_enrich(text, model, lang="auto"):
+    return dr.enrich(text, label=model, lang=lang)
 
 
-def cb_expr(text, model, auto):
+def cb_expr(text, model, auto, lang="auto"):
     eng.clear_cancel()
-    text = _maybe_enrich(text, model, auto)
+    text = _maybe_enrich(text, model, auto, lang)
     sr, wav = _speak(text)
     audio = _safe_audio_output(sr, wav, ctx="expr")
     if audio is None:
@@ -632,9 +690,9 @@ def cb_expr(text, model, auto):
     return audio, text
 
 
-def cb_clone(text, model, auto, ref_audio, ref_text, preset, temperature, top_p, seed):
+def cb_clone(text, model, auto, ref_audio, ref_text, preset, temperature, top_p, seed, lang="auto"):
     eng.clear_cancel()
-    text = _maybe_enrich(text, model, auto)
+    text = _maybe_enrich(text, model, auto, lang)
     ref = ref_audio or (voice_path(preset) if preset and preset != OWN_FILE else None)
     sr, wav = _speak(text, ref_audio=ref, ref_text=ref_text, temperature=temperature, top_p=top_p, seed=seed)
     audio = _safe_audio_output(sr, wav, ctx="clone")
@@ -644,12 +702,12 @@ def cb_clone(text, model, auto, ref_audio, ref_text, preset, temperature, top_p,
     return audio, text
 
 
-def cb_podcast_script(topic, num, model):
-    return dr.write_podcast(topic, int(num), label=model)
+def cb_podcast_script(topic, num, model, lang="auto"):
+    return dr.write_podcast(topic, int(num), label=model, lang=lang)
 
 
-def cb_book_markup(text, num, model):
-    return dr.cast_audiobook(text, int(num), label=model)
+def cb_book_markup(text, num, model, lang="auto"):
+    return dr.cast_audiobook(text, int(num), label=model, lang=lang)
 
 
 def cb_multi_synth(script, a0, a1, a2, a3, t0, t1, t2, t3, progress=gr.Progress()):
@@ -676,7 +734,7 @@ def cb_multi_synth(script, a0, a1, a2, a3, t0, t1, t2, t3, progress=gr.Progress(
     return (eng.SR, final)
 
 
-def cb_batch(texts, model, auto, progress=gr.Progress()):
+def cb_batch(texts, model, auto, lang="auto", progress=gr.Progress()):
     eng.clear_cancel()
     lines = [t.strip() for t in (texts or "").splitlines() if t.strip()]
     log, paths = [], []
@@ -686,7 +744,7 @@ def cb_batch(texts, model, auto, progress=gr.Progress()):
             return
         progress((i + 1) / max(len(lines), 1), desc=f"{i + 1}/{len(lines)}")
         if auto:
-            line = dr.enrich(line, model)
+            line = dr.enrich(line, model, lang=lang)
         sr, wav = _speak(line)
         p = _save(sr, wav, "batch")
         if p:
@@ -728,9 +786,11 @@ def build():
     with gr.Blocks(title=APP_NAME) as demo:
         gr.HTML(T("brand_header_html"))
         model_dd = gr.Dropdown(MODEL_CHOICES, value=dr.DEFAULT_MODEL, label=T("director_model"))
-        quant_dd = gr.Dropdown([("bf16 — макс. качество (дефолт)", "bf16"),
-                                ("4-bit (nf4) ⚗️ эксперим. — качество ниже", "4bit"),
-                                ("8-bit ⚗️ эксперим. — качество ниже", "8bit")],
+        lang_dd = gr.Dropdown([(T("lang_auto"), "auto"), ("English", "en"), ("Русский", "ru")],
+                              value="auto", label=T("director_lang"), info=T("director_lang_info"))
+        quant_dd = gr.Dropdown([(T("quant_bf16"), "bf16"),
+                                (T("quant_4bit"), "4bit"),
+                                (T("quant_8bit"), "8bit")],
                                value="bf16", label=T("quant"), info=T("quant_info"))
         quant_dd.change(lambda p: eng.set_precision(p), [quant_dd], None)
         fmt_dd = gr.Radio(["mp3", "wav", "flac", "ogg"], value="mp3", label=T("out_format"))
@@ -753,7 +813,7 @@ def build():
                         t_stop = gr.Button(T("stop"), variant="stop")
                     t_out = gr.Audio(label=T("result"), type="numpy", autoplay=True)
                 gr.Examples(TTS_EXAMPLES, inputs=[t_text], label=T("examples"))
-                ev_tts = t_btn.click(cb_tts, [t_text, model_dd, t_auto, t_temp, t_top_p, t_top_k, t_max, t_seed],
+                ev_tts = t_btn.click(cb_tts, [t_text, model_dd, t_auto, t_temp, t_top_p, t_top_k, t_max, t_seed, lang_dd],
                                      [t_out, t_text])
                 t_stop.click(eng.request_cancel, None, None, queue=False, cancels=[ev_tts])
 
@@ -766,7 +826,7 @@ def build():
                     gr.Markdown(f"**{clabel}**")
                     with gr.Row():
                         for val in sorted(dr.WHITELIST[cat]):
-                            gr.Button(f"{TAG_RU.get(val, val)}\n{val}", size="sm", elem_classes=["tagbtn"]).click(
+                            gr.Button(T(f"tagbtn_{val}"), size="sm", elem_classes=["tagbtn"]).click(
                                 lambda t, c=cat, v=val: (t or "") + f"<|{c}:{v}|>", [e_text], [e_text])
                 with gr.Row():
                     e_enrich = gr.Button(T("enrich"), variant="secondary")
@@ -775,9 +835,9 @@ def build():
                 e_out = gr.Audio(label=T("result"), type="numpy", autoplay=True)
                 gr.Examples(EXPR_EXAMPLES, inputs=[e_text], label=T("examples"))
                 with gr.Accordion(T("tags_help"), open=True):
-                    gr.Markdown(TAGS_LEGEND_MD)
-                e_enrich.click(cb_enrich, [e_text, model_dd], [e_text])
-                ev_expr = e_btn.click(cb_expr, [e_text, model_dd, e_auto], [e_out, e_text])
+                    gr.Markdown(T("tags_legend"))
+                e_enrich.click(cb_enrich, [e_text, model_dd, lang_dd], [e_text])
+                ev_expr = e_btn.click(cb_expr, [e_text, model_dd, e_auto, lang_dd], [e_out, e_text])
                 e_stop.click(eng.request_cancel, None, None, queue=False, cancels=[ev_expr])
 
             # 3. Клонирование
@@ -810,7 +870,7 @@ def build():
                 cl_load.click(cb_load_cloud, None, [cl_status, cl_voices])
                 cl_all.click(cb_download_all_cloud, None, [cl_status, c_preset])
                 cl_dl.click(cb_download_voices, [cl_voices], [cl_status, c_preset])
-                ev_clone = c_btn.click(cb_clone, [c_text, model_dd, c_auto, c_ref, c_ref_text, c_preset, c_temp, c_top_p, c_seed],
+                ev_clone = c_btn.click(cb_clone, [c_text, model_dd, c_auto, c_ref, c_ref_text, c_preset, c_temp, c_top_p, c_seed, lang_dd],
                                        [c_out, c_text])
                 c_stop.click(eng.request_cancel, None, None, queue=False, cancels=[ev_clone])
 
@@ -827,7 +887,7 @@ def build():
                 p_btn = gr.Button(T("synth"), variant="primary", size="lg")
                 p_stop = gr.Button(T("stop"), variant="stop")
                 p_out = gr.Audio(label=T("result"), type="numpy", autoplay=True)
-                p_script_btn.click(cb_podcast_script, [p_topic, p_num, p_model], [p_script])
+                p_script_btn.click(cb_podcast_script, [p_topic, p_num, p_model, lang_dd], [p_script])
                 ev_pod = p_btn.click(cb_multi_synth, [p_script] + p_audios + p_texts, p_out)
                 p_stop.click(eng.request_cancel, None, None, queue=False, cancels=[ev_pod])
 
@@ -844,7 +904,7 @@ def build():
                 b_btn = gr.Button(T("synth"), variant="primary", size="lg")
                 b_stop = gr.Button(T("stop"), variant="stop")
                 b_out = gr.Audio(label=T("result"), type="numpy", autoplay=True)
-                b_markup.click(cb_book_markup, [b_text, b_num, b_model], [b_script])
+                b_markup.click(cb_book_markup, [b_text, b_num, b_model, lang_dd], [b_script])
                 ev_book = b_btn.click(cb_multi_synth, [b_script] + b_audios + b_texts, b_out)
                 b_stop.click(eng.request_cancel, None, None, queue=False, cancels=[ev_book])
 
@@ -856,7 +916,7 @@ def build():
                 bt_stop = gr.Button(T("stop"), variant="stop")
                 bt_log = gr.Textbox(label=T("log"), lines=8)
                 bt_files = gr.Files(label=T("result"))
-                ev_batch = bt_btn.click(cb_batch, [bt_text, model_dd, bt_auto], [bt_log, bt_files])
+                ev_batch = bt_btn.click(cb_batch, [bt_text, model_dd, bt_auto, lang_dd], [bt_log, bt_files])
                 bt_stop.click(eng.request_cancel, None, None, queue=False, cancels=[ev_batch])
 
     return demo
