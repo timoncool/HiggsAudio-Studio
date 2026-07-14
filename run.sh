@@ -11,6 +11,12 @@ VENV_DIR="${VENV_DIR:-$SCRIPT_DIR/.venv}"
 VENV_PY="$VENV_DIR/bin/python"
 REQ_HASH_FILE="$VENV_DIR/.requirements.sha256"
 
+# uv provisions both the interpreter and the venv (no system python3 required).
+UV_DIR="${UV_DIR:-$SCRIPT_DIR/.uv}"
+UV_BIN="$UV_DIR/uv"
+UV=""
+PY_VERSION="${PY_VERSION:-3.12}"
+
 RUN_AFTER_SETUP=1
 DO_UPDATE=0
 FORCE_REINSTALL=0
@@ -135,12 +141,52 @@ setup_runtime_dirs() {
   export PYTHONUNBUFFERED="1"
 }
 
+ensure_uv() {
+  if [[ -n "$UV" ]]; then
+    return
+  fi
+  if command -v uv >/dev/null 2>&1; then
+    UV="$(command -v uv)"
+    info "Using uv: $UV"
+    return
+  fi
+  if [[ -x "$UV_BIN" ]]; then
+    UV="$UV_BIN"
+    info "Using uv: $UV"
+    return
+  fi
+
+  require_cmd curl
+  require_cmd tar
+
+  local arch tarball
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64|amd64) tarball="uv-x86_64-unknown-linux-gnu.tar.gz" ;;
+    aarch64|arm64) tarball="uv-aarch64-unknown-linux-gnu.tar.gz" ;;
+    *) fail "Unsupported architecture for uv: $arch"; exit 1 ;;
+  esac
+
+  info "Downloading uv ($tarball)"
+  mkdir -p "$UV_DIR"
+  curl -LsSf "https://github.com/astral-sh/uv/releases/latest/download/$tarball" -o "$UV_DIR/uv.tar.gz"
+  tar -xzf "$UV_DIR/uv.tar.gz" -C "$UV_DIR" --strip-components=1
+  rm -f "$UV_DIR/uv.tar.gz"
+
+  if [[ ! -x "$UV_BIN" ]]; then
+    fail "Failed to install uv"
+    exit 1
+  fi
+  UV="$UV_BIN"
+  ok "uv installed"
+}
+
 create_or_activate_venv() {
-  require_cmd python3
+  ensure_uv
 
   if [[ ! -x "$VENV_PY" ]]; then
-    info "Creating virtual environment in $VENV_DIR"
-    python3 -m venv "$VENV_DIR"
+    info "Creating virtual environment in $VENV_DIR (uv, Python $PY_VERSION)"
+    "$UV" venv --python "$PY_VERSION" "$VENV_DIR"
     ok "Virtual environment created"
   fi
 
@@ -158,12 +204,14 @@ install_or_update_deps() {
   current_hash="$(hash_requirements)"
   installed_hash="$(cat "$REQ_HASH_FILE" 2>/dev/null || true)"
 
+  ensure_uv
+
   info "Updating pip tooling"
-  "$VENV_PY" -m pip install --upgrade pip setuptools wheel --no-warn-script-location >/dev/null
+  "$UV" pip install --python "$VENV_PY" --upgrade pip setuptools wheel >/dev/null
 
   if [[ "$FORCE_REINSTALL" -eq 1 || "$DO_UPDATE" -eq 1 || "$current_hash" != "$installed_hash" ]]; then
     info "Installing Python dependencies"
-    "$VENV_PY" -m pip install -r "$REQ_FILE" --no-warn-script-location
+    "$UV" pip install --python "$VENV_PY" -r "$REQ_FILE"
     printf '%s\n' "$current_hash" > "$REQ_HASH_FILE"
     ok "Dependencies are up to date"
   else

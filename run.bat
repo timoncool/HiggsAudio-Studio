@@ -9,8 +9,8 @@ echo ========================================
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
-if not exist "python\python.exe" (
-    echo ОШИБКА: Python не найден! Запустите install.bat
+if not exist ".venv\Scripts\python.exe" (
+    echo ОШИБКА: Окружение .venv не найдено! Запустите install.bat
     pause
     exit /b 1
 )
@@ -50,8 +50,14 @@ set PYTHONIOENCODING=utf-8
 set PYTHONUNBUFFERED=1
 set GGML_CUDA_NO_PINNED=1
 
+REM === Локальные соединения мимо системного прокси ===
+REM Gradio при старте дёргает свой же сервер на 127.0.0.1; если задан HTTP(S)_PROXY,
+REM запрос уходит в прокси и падает. no_proxy исключает localhost (внешние загрузки прокси не теряют).
+set "no_proxy=localhost,127.0.0.1,0.0.0.0,::1"
+set "NO_PROXY=localhost,127.0.0.1,0.0.0.0,::1"
+
 echo Запуск приложения...
-python\python.exe app.py
+.venv\Scripts\python.exe app.py
 
 if errorlevel 1 (
     echo.
