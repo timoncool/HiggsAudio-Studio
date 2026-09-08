@@ -56,13 +56,14 @@ DEFAULT_MODEL = "Qwen3.5-9B · Q4_K_M (дефолт, ~5.5 ГБ)"
 _lock = threading.Lock()
 
 
-def _call(action, text, label=DEFAULT_MODEL, n=2):
+def _call(action, text, label=DEFAULT_MODEL, n=2, lang="auto"):
     """Запустить воркер режиссёра (отдельный GPU-процесс), отдать запрос, получить результат.
-    Воркер завершается сам → его VRAM и CUDA-контекст освобождаются до старта TTS."""
+    Воркер завершается сам → его VRAM и CUDA-контекст освобождаются до старта TTS.
+    lang: "auto" (язык исходного текста) | "en" | "ru" — язык вывода режиссёра."""
     if _MOCK:
         return text
     script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "director_worker.py")
-    req = json.dumps({"action": action, "text": text, "label": label, "n": n}, ensure_ascii=False)
+    req = json.dumps({"action": action, "text": text, "label": label, "n": n, "lang": lang}, ensure_ascii=False)
     # GPU НЕ глушим — режиссёр на GPU. В этом процессе нет torch, llama берёт свой cublas 12.4.
     # stderr → консоль (наследуется): логи и прогресс скачивания видны, пайп не копится.
     with _lock:  # один воркер за раз — не грузим две модели на GPU параллельно
@@ -80,16 +81,16 @@ def _call(action, text, label=DEFAULT_MODEL, n=2):
     return data["result"]
 
 
-def enrich(text, label=DEFAULT_MODEL):
+def enrich(text, label=DEFAULT_MODEL, lang="auto"):
     """РОЛЬ A — нормализация под произношение + лёгкая правка + теги по смыслу."""
-    return _call("enrich", text, label)
+    return _call("enrich", text, label, lang=lang)
 
 
-def write_podcast(topic, n_speakers=2, label=DEFAULT_MODEL):
+def write_podcast(topic, n_speakers=2, label=DEFAULT_MODEL, lang="auto"):
     """РОЛЬ B — мульти-спикерный диалог в индексном формате 'Speaker N: реплика'."""
-    return _call("podcast", topic, label, n=max(2, int(n_speakers)))
+    return _call("podcast", topic, label, n=max(2, int(n_speakers)), lang=lang)
 
 
-def cast_audiobook(text, n_voices=2, label=DEFAULT_MODEL):
+def cast_audiobook(text, n_voices=2, label=DEFAULT_MODEL, lang="auto"):
     """РОЛЬ C — атрибуция: Speaker 0 = рассказчик, 1.. = персонажи."""
-    return _call("audiobook", text, label, n=max(2, int(n_voices)))
+    return _call("audiobook", text, label, n=max(2, int(n_voices)), lang=lang)
