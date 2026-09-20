@@ -73,17 +73,83 @@ def _chat(llm, system, user, max_new=1024, temp=0.4):
     return _strip_think(out["choices"][0]["message"].get("content", ""))
 
 
-_TAG_RULES = (
-    "Разрешены ТОЛЬКО эти теги, строго в формате <|категория:значение|> (с вертикальными чертами):\n"
-    "- emotion (в начале предложения): " + ", ".join(sorted(WHITELIST["emotion"])) + "\n"
-    "- prosody: " + ", ".join(sorted(WHITELIST["prosody"])) + " (pause/long_pause — внутри строки)\n"
-    "- style (в начале предложения): " + ", ".join(sorted(WHITELIST["style"])) + "\n"
-    "- sfx (внутри строки, вплотную к звукоподражанию): " + ", ".join(sorted(WHITELIST["sfx"])) + "\n"
-    "НЕ выдумывай другие теги и значения. ЗАПРЕЩЕНО писать <speed_1.2>, <emotion:excited>, <sfx:wind> — "
-    "только значения из списка и только в формате <|категория:значение|>.\n"
-    "Пример: <|emotion:elation|>Поздравляю всех! <|sfx:laughter|>ха-ха. <|prosody:long_pause|> Продолжаем.\n"
-    "Верни ТОЛЬКО готовый текст, без пояснений и преамбул."
-)
+# Director output language: "ru", "en", or "auto" (keep the input text's language).
+# Instructions are phrased in the target language; "auto" phrases them in English and tells
+# the model to mirror the input language instead of translating.
+_TAG_RULES = {
+    "ru": (
+        "Разрешены ТОЛЬКО эти теги, строго в формате <|категория:значение|> (с вертикальными чертами):\n"
+        "- emotion (в начале предложения): " + ", ".join(sorted(WHITELIST["emotion"])) + "\n"
+        "- prosody: " + ", ".join(sorted(WHITELIST["prosody"])) + " (pause/long_pause — внутри строки)\n"
+        "- style (в начале предложения): " + ", ".join(sorted(WHITELIST["style"])) + "\n"
+        "- sfx (внутри строки, вплотную к звукоподражанию): " + ", ".join(sorted(WHITELIST["sfx"])) + "\n"
+        "НЕ выдумывай другие теги и значения. ЗАПРЕЩЕНО писать <speed_1.2>, <emotion:excited>, <sfx:wind> — "
+        "только значения из списка и только в формате <|категория:значение|>.\n"
+        "Пример: <|emotion:elation|>Поздравляю всех! <|sfx:laughter|>ха-ха. <|prosody:long_pause|> Продолжаем.\n"
+        "Верни ТОЛЬКО готовый текст, без пояснений и преамбул."
+    ),
+    "en": (
+        "ONLY these tags are allowed, strictly in the format <|category:value|> (with vertical bars):\n"
+        "- emotion (at the start of a sentence): " + ", ".join(sorted(WHITELIST["emotion"])) + "\n"
+        "- prosody: " + ", ".join(sorted(WHITELIST["prosody"])) + " (pause/long_pause — inside the line)\n"
+        "- style (at the start of a sentence): " + ", ".join(sorted(WHITELIST["style"])) + "\n"
+        "- sfx (inside the line, right next to the onomatopoeia): " + ", ".join(sorted(WHITELIST["sfx"])) + "\n"
+        "Do NOT invent other tags or values. It is FORBIDDEN to write <speed_1.2>, <emotion:excited>, <sfx:wind> — "
+        "only values from the list and only in the format <|category:value|>.\n"
+        "Example: <|emotion:elation|>Congratulations everyone! <|sfx:laughter|>ha-ha. <|prosody:long_pause|> Let's continue.\n"
+        "Return ONLY the finished text, with no explanations or preamble."
+    ),
+}
+
+_ENRICH_SYS = {
+    "ru": ("Ты — режиссёр озвучки. Нормализуй текст под произношение (числа, даты, аббревиатуры, "
+           "валюты, единицы, символы — словами), исправь явные опечатки, и расставь эмоциональные / "
+           "sfx / prosody-теги по смыслу. "),
+    "en": ("You are a voice-over director. Normalize the text for pronunciation (numbers, dates, "
+           "abbreviations, currencies, units, symbols — spelled out in words), fix obvious typos, and add "
+           "emotion / sfx / prosody tags according to the meaning. "),
+}
+
+_PODCAST_SYS = {
+    "ru": ("Ты — сценарист подкаста на {n} спикеров (Speaker 0 .. Speaker {last}). "
+           "Напиши живой диалог: КАЖДАЯ строка строго в формате 'Speaker K: реплика', где K — номер от 0. "
+           "Дай каждому спикеру свою манеру речи и характер. В репликах расставляй теги по смыслу. "),
+    "en": ("You are a podcast scriptwriter for {n} speakers (Speaker 0 .. Speaker {last}). "
+           "Write a lively dialogue: EVERY line strictly in the format 'Speaker K: line', where K is a number from 0. "
+           "Give each speaker their own speaking style and character. Add tags in the lines according to the meaning. "),
+}
+
+_AUDIOBOOK_SYS = {
+    "ru": ("Ты — кастинг-режиссёр аудиокниги. Раздели текст на речь рассказчика и реплики персонажей. "
+           "Speaker 0 — РАССКАЗЧИК (авторский текст), Speaker 1 .. Speaker {last} — персонажи "
+           "(закрепи за каждым персонажем свой номер и держи его постоянным). "
+           "КАЖДАЯ строка строго в формате 'Speaker K: реплика'. Текст сохраняй ДОСЛОВНО, "
+           "только размечай говорящего и добавляй теги по смыслу. "),
+    "en": ("You are a casting director for an audiobook. Split the text into narrator speech and character lines. "
+           "Speaker 0 is the NARRATOR (authorial text), Speaker 1 .. Speaker {last} are characters "
+           "(assign each character their own number and keep it constant). "
+           "EVERY line strictly in the format 'Speaker K: line'. Keep the text VERBATIM, "
+           "only mark the speaker and add tags according to the meaning. "),
+}
+
+
+def _norm_lang(lang):
+    lang = (lang or "auto").lower()
+    return lang if lang in ("ru", "en", "auto") else "auto"
+
+
+def _base_lang(lang):
+    """Language the director's own instructions are written in (auto → English)."""
+    return "ru" if lang == "ru" else "en"
+
+
+def _lang_clause(lang):
+    """Explicit output-language directive appended to the system prompt."""
+    if lang == "ru":
+        return "Пиши на русском языке. "
+    if lang == "en":
+        return "Write in English. "
+    return "Always write in the SAME language as the input text — never translate. "
 
 
 def _filter_line(line):
@@ -94,29 +160,27 @@ def _filter_line(line):
     return filter_tags(line)
 
 
-def enrich(llm, text):
-    s = ("Ты — режиссёр озвучки. Нормализуй текст под произношение (числа, даты, аббревиатуры, "
-         "валюты, единицы, символы — словами), исправь явные опечатки, и расставь эмоциональные / "
-         "sfx / prosody-теги по смыслу. " + _TAG_RULES)
+def enrich(llm, text, lang="auto"):
+    lang = _norm_lang(lang)
+    b = _base_lang(lang)
+    s = _ENRICH_SYS[b] + _lang_clause(lang) + _TAG_RULES[b]
     return filter_tags(_chat(llm, s, text))
 
 
-def write_podcast(llm, topic, n_speakers=2):
+def write_podcast(llm, topic, n_speakers=2, lang="auto"):
+    lang = _norm_lang(lang)
     n = max(2, int(n_speakers))
-    s = (f"Ты — сценарист подкаста на {n} спикеров (Speaker 0 .. Speaker {n - 1}). "
-         "Напиши живой диалог: КАЖДАЯ строка строго в формате 'Speaker K: реплика', где K — номер от 0. "
-         "Дай каждому спикеру свою манеру речи и характер. В репликах расставляй теги по смыслу. " + _TAG_RULES)
+    b = _base_lang(lang)
+    s = _PODCAST_SYS[b].format(n=n, last=n - 1) + _lang_clause(lang) + _TAG_RULES[b]
     out = _chat(llm, s, topic, max_new=2048)
     return "\n".join(_filter_line(ln) for ln in out.splitlines())
 
 
-def cast_audiobook(llm, text, n_voices=2):
+def cast_audiobook(llm, text, n_voices=2, lang="auto"):
+    lang = _norm_lang(lang)
     n = max(2, int(n_voices))
-    s = ("Ты — кастинг-режиссёр аудиокниги. Раздели текст на речь рассказчика и реплики персонажей. "
-         f"Speaker 0 — РАССКАЗЧИК (авторский текст), Speaker 1 .. Speaker {n - 1} — персонажи "
-         "(закрепи за каждым персонажем свой номер и держи его постоянным). "
-         "КАЖДАЯ строка строго в формате 'Speaker K: реплика'. Текст сохраняй ДОСЛОВНО, "
-         "только размечай говорящего и добавляй теги по смыслу. " + _TAG_RULES)
+    b = _base_lang(lang)
+    s = _AUDIOBOOK_SYS[b].format(last=n - 1) + _lang_clause(lang) + _TAG_RULES[b]
     out = _chat(llm, s, text, max_new=2048)
     return "\n".join(_filter_line(ln) for ln in out.splitlines())
 
@@ -137,14 +201,15 @@ def main():
     text = req.get("text", "")
     label = req.get("label", DEFAULT_MODEL)
     n = req.get("n", 2)
+    lang = req.get("lang", "auto")
     try:
         llm = load_llm(label)
         if action == "enrich":
-            result = enrich(llm, text)
+            result = enrich(llm, text, lang)
         elif action == "podcast":
-            result = write_podcast(llm, text, n)
+            result = write_podcast(llm, text, n, lang)
         elif action == "audiobook":
-            result = cast_audiobook(llm, text, n)
+            result = cast_audiobook(llm, text, n, lang)
         else:
             result = text
         print(json.dumps({"ok": True, "result": result}, ensure_ascii=False))
