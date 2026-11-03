@@ -1,3 +1,6 @@
+> [!WARNING]
+> **Проект больше не развивается.** Озвучка на Higgs Audio v3, клонирование голоса, ИИ-режиссёр текста, подкасты и аудиокниги теперь в **[Speech Studio](https://github.com/timoncool/speech-studio)**. Там собраны новейшие ИИ-технологии: озвучка текста на Higgs Audio v3, Fish Audio Drama 3, Qwen3-TTS и Supertonic 3, клонирование голоса, голос по описанию, аудиокниги и подкасты, распознавание речи с разделением по говорящим на Parakeet, Nemotron и CrisperWhisper, голосовой разговор с ИИ-агентом. Бесплатно и офлайн, на Windows, macOS и Linux.
+
 <div align="center">
 
 # Higgs Audio Studio
